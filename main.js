@@ -1,30 +1,40 @@
 "use strict";
 
-const musicBox = [
+const startData = [
   {
+    id: 14,
     singer: "Rick Astley",
     name: "Never gonna give you up",
-    size: 15,
+    audioPath: "Rick Astley (Рик Эстли) - Never Gonna Give You Up",
+    imgPath: "astley",
   },
   {
+    id: 78,
     singer: "Hurts",
     name: "Wonderful life",
-    size: 14,
+    audioPath: "Hurts - Wonderful Life(livesong.me)",
+    imgPath: "hurts",
   },
   {
+    id: 528,
     singer: "Linkin park",
     name: "Numb",
-    size: 20,
+    audioPath: "Linkin Park - Numb",
+    imgPath: "lp",
   },
   {
+    id: 65,
     singer: "Король и шут",
     name: "Лесник",
-    size: 6,
+    audioPath: "Король и Шут - Лесник (OST Король и Шут)",
+    imgPath: "king&joker",
   },
   {
+    id: 222,
     singer: "The Offspring",
     name: "Why don't you get a job",
-    size: 22,
+    audioPath: "The Offspring - Why Don't Get A Job",
+    imgPath: "offspring",
   },
 ];
 
@@ -37,16 +47,17 @@ function createElement(html) {
 class Player {
   _element = null;
   _subElements = {};
+  _audio = null;
 
   _state = {
+    currentTrack: null,
+    currentTrackIndex: 0,
     storage: [],
-    amountOfTracks: 0,
-    currMemory: 0,
+    isPlay: false,
   };
 
-  constructor({ memoryMax }, musicBox, Track) {
-    this._memoryMax = memoryMax;
-    this._musicBox = musicBox;
+  constructor(startData, Track) {
+    this._startData = startData;
     this._Track = Track;
     this._init();
   }
@@ -54,114 +65,149 @@ class Player {
   _init() {
     this._element = createElement(this._getTemplate());
     this._subElements = this._getSubElements();
+
+    this._setStateStorage(this._generateItemsObject());
+    this._setStateCurrentTrack(this._state.storage[0]);
+
+    this._getCurrentTrackLink();
+
+    this._addListeners();
     this._render();
   }
 
-  addSong(track) {
-    /* 
-    1. проверить есть ли там трек, если есть return
-    2. проверить по памяти (влезает ли он)
-    3. push
-    4. _fillMemory(track.size)
-    
-    */
+  _addListeners() {
+    this._subElements.play.addEventListener("click", () => {
+      this._setStatePlay();
+      this._render();
+      this._state.isPlay ? this._play() : this._pause();
+    });
+
+    this._subElements.next.addEventListener("click", () => {
+      this._setStateCurrentTrackIndex(this._state.currentTrackIndex + 1);
+      this._setStateCurrentTrack(this._state.storage[this._state.currentTrackIndex]);
+      this._getCurrentTrackLink();
+      this._render();
+      this._play();
+    });
+
+    this._subElements.prev.addEventListener("click", () => {
+      this._setStateCurrentTrackIndex(this._state.currentTrackIndex - 1);
+      this._setStateCurrentTrack(this._state.storage[this._state.currentTrackIndex]);
+      this._getCurrentTrackLink();
+      this._render();
+      this._play();
+    });
+
+    // this._getCurrentTrackLink().addEventListener("timeupdate", (e) => {
+    //   this._subElements.startTime.textContent = `${e.target.currentTime}`;
+    //   console.log(e.target.currentTime);
+    //   // console.log(e.target.duration);
+    //   let progressWidth = (e.target.currentTime / e.target.duration) * 100;
+    //   this._subElements.progress.style.width = `${progressWidth}%`;
+
+    //   // console.log(this._getCurrentTrackLink());
+    // });
   }
 
-  removeSong(id) {
-    /* 
-    2.найти трек в storage по id {}
-    3. удаляем из storage
-    4. _cleanMemory(track.size)
-    
-    */
+  _setStateCurrentTrack(obj) {
+    this._state.currentTrack = obj;
   }
 
-  // переписать на generateTracks
-  _add() {
-    return this._musicBox.map((track) => {
-      if (this._state.storage.includes(track.name)) {
-        return new this._Track(
-          { ...track, added: true },
-          this._setStorage.bind(this),
-          this._removeTrack.bind(this),
-          this._fillMemory.bind(this),
-          this._cleanMemory.bind(this),
-          this._play.bind(this)
-        ).element;
-      }
-      return new this._Track(
-        { ...track, added: false },
-        this._setStorage.bind(this),
-        this._removeTrack.bind(this),
-        this._fillMemory.bind(this),
-        this._cleanMemory.bind(this)
-      ).element;
+  _setStateStorage(newTracks) {
+    this._state.storage = [...this._state.storage, ...newTracks];
+  }
+
+  _setStatePlay() {
+    this._state.isPlay = !this._state.isPlay;
+  }
+
+  _setStateCurrentTrackIndex(index) {
+    this._state.currentTrackIndex = index;
+  }
+
+  _listTrackHandler(key) {
+    this._setStateCurrentTrackIndex(key);
+    this._setStateCurrentTrack(this._state.storage[key]);
+    this._getCurrentTrackLink();
+    this._render();
+    this._play();
+  }
+
+  _generateItemsObject() {
+    return this._startData.map((track, i) => {
+      return new this._Track({ ...track, key: i }, this._listTrackHandler.bind(this));
     });
   }
 
-  _setStorage(trackName) {
-    this._state.amountOfTracks = this._state.storage.push(trackName); // убрать
-    // сделать проверку на дубли
-    this._render();
-    console.log(this._state.storage);
+  _generateItemsElements() {
+    return this._state.storage.map((track) => track.element);
   }
 
-  _removeTrack(trackName) {
-    this._state.storage = this._state.storage.filter((track) => track !== trackName); //отдельный метод состояния
-    this._state.amountOfTracks -= 1;
-
-    this._subElements.playNow.textContent = ``; //в рендер
-    this._render();
-    console.log(this._state.storage);
-  }
-
-  _fillMemory(size) {
-    this._state.currMemory += size;
-    this._render();
-  }
-
-  _cleanMemory(size) {
-    this._state.currMemory -= size;
-    this._render();
-  }
-
-  _stop() {
-    this._currentSong.stop();
-    setStateCurrentTrack(undefined);
-    _render();
-  }
-
-  //  id
-  _play(singer, trackName) {
-    // const currentSong = getSongById(id)
-    // setStateCurrentTrack(currentSong.id)
-    // _render()
-    // this._currentSong = new Audio(currentSong.path).play() path ->tracks ->
-    if (this._state.storage.includes(trackName)) {
-      this._subElements.playNow.textContent = `Проигрывается песня: ${singer} - ${trackName}`; //рендер
+  _getCurrentTrackLink() {
+    if (this._audio) {
+      // если трек уже установлен, надо ставить его на паузу, вдруг prev next
+      this._pause();
     }
+    this._audio = new Audio(`audio/${this._state.currentTrack._audioPath}.mp3`);
   }
 
-  //в состоянии надо добавить текущий трек
-  //метод поиска песни по id getSongById
+  _play() {
+    this._audio.play();
+  }
+
+  _pause() {
+    this._audio.pause();
+  }
+
+  _isNext() {
+    return this._state.storage.length > this._state.currentTrackIndex + 1;
+  }
+
+  _isPrev() {
+    return this._state.currentTrackIndex > 0;
+  }
 
   _render() {
-    this._subElements.data.textContent = `В плейлисте ${this._state.amountOfTracks} песен.`;
-    this._subElements.memory.textContent = `Занято ${this._state.currMemory} mb памяти из ${this._memoryMax} mb. Осталось ${
-      this._memoryMax - this._state.currMemory
-    } mb`;
+    this._subElements.storage.append(...this._generateItemsElements());
 
-    this._subElements.storage.innerHTML = "";
-    this._subElements.storage.append(...this._add());
+    this._subElements.name.textContent = `${this._state.currentTrack._name}`;
+    this._subElements.artist.textContent = `${this._state.currentTrack._singer}`;
+    this._subElements.img.src = `images/${this._state.currentTrack._imgPath}.jpg`;
+
+    if (this._state.isPlay) {
+      this._subElements.play.innerHTML = `<i class="fa-solid fa-pause"></i>`;
+    } else {
+      this._subElements.play.innerHTML = `<i class="fa-solid fa-play"></i>`;
+    }
+
+    !this._isNext() ? this._subElements.next.setAttribute("disabled", true) : this._subElements.next.removeAttribute("disabled");
+    !this._isPrev() ? this._subElements.prev.setAttribute("disabled", true) : this._subElements.prev.removeAttribute("disabled");
   }
 
   _getTemplate() {
     return `<div class="player">
-							<p class="player__data" data-element="data"></p>
-							<p class="player__memory" data-element="memory"></p>
-							<p class="player__playNow" data-element="playNow"></p>
+							<div class="player__img-wrapper">
+								<img class="player__img" data-element="img" src="" alt="" />
+							</div>
+							<div class="player__title">
+								<span class="player__name" data-element="name"></span>
+								<span class="player__artist" data-element="artist"></span>
+							</div>
+							<div class="player__control">
+								<button class="btn btn--prev" data-element="prev"><i class="fa-solid fa-backward"></i></button>
+								<button class="btn btn--play" data-element="play"></button>
+								<button class="btn btn--next" data-element="next"><i class="fa-solid fa-forward"></i></button>
+							</div>
+							<div class="player__progress">
+								<div class="player__progress-bar" data-element="progress"></div>
+								<div class="player__timer">
+								<span class="player__start-time" data-element="startTime">0:00</span>
+								<span class="player__end-time">03:20</span>
+
+								</div>
+							</div>
 							<div class="player__storage" data-element="storage"></div>
-						</div>`;
+      			</div>`;
   }
 
   _getSubElements() {
@@ -182,63 +228,35 @@ class Track {
   _element = null;
   _subElements = {};
 
-  constructor({ singer, name, size, added }, addTrack, removeTrack, addSize, removeSize, playTrack) {
+  constructor({ id, singer, name, imgPath, audioPath, key }, listTrackHandler) {
+    this._id = id;
     this._singer = singer;
     this._name = name;
-    this._size = size;
-    this._added = added;
-    this._addTrack = addTrack;
-    this._removeTrack = removeTrack;
-    this._addSize = addSize;
-    this._removeSize = removeSize;
-    this._playTrack = playTrack;
-
+    this._imgPath = imgPath;
+    this._listTrackHandler = listTrackHandler;
+    this._audioPath = audioPath;
+    this._key = key;
     this._init();
   }
 
   _init() {
     this._element = createElement(this._getTemplate());
     this._subElements = this._getSubElements();
-    this._addListener();
-    this._render();
+    this._addListeners();
   }
 
-  _addListener() {
-    this._subElements.btnAdd.addEventListener("click", () => {
-      if (this._added === false) {
-        this._addTrack(this._name);
-        this._addSize(this._size);
-      }
-      if (this._added) {
-        this._removeTrack(this._name);
-        this._removeSize(this._size);
-      }
-      this._render();
+  _addListeners() {
+    this._element.addEventListener("click", (e) => {
+      this._listTrackHandler(this._key);
     });
-
-    this._subElements.btnPlay.addEventListener("click", () => {
-      this._playTrack(this._singer, this._name);
-    });
-  }
-
-  _render() {
-    if (this._added) {
-      this._subElements.btnAdd.textContent = `-`;
-      this._element.classList.add("track-wrapper--active");
-      this._subElements.btnPlay.classList.add("track-wrapper__btnPlay--active");
-    } else {
-      this._subElements.btnAdd.textContent = `+`;
-      this._element.classList.remove("track-wrapper--active");
-      this._subElements.btnPlay.classList.remove("track-wrapper__btnPlay--active");
-    }
   }
 
   _getTemplate() {
-    return `<div class="track-wrapper">
-							<button class="btn track-wrapper__btnPlay btn--play" data-element='btnPlay'><i class="fa-solid fa-play"></i></button>
-							<button class="btn track-wrapper__btn btn--add" data-element='btnAdd'></button>
-							<div class="track-wrapper__track">${this._singer} - ${this._name}</div>
-						</div>`;
+    return `<div class="track" data-id="${this._id}">
+							<img class="track__img" src="images/${this._imgPath}.jpg" alt="" />
+							<span class="track__singer">${this._singer} -</span>
+							<span class="track__name">${this._name}</span>
+          	</div>`;
   }
 
   _getSubElements() {
@@ -256,79 +274,27 @@ class Track {
 }
 
 const root = document.querySelector(".root");
+root.insertAdjacentElement("beforeend", new Player(startData, Track).element);
 
-root.insertAdjacentElement(
-  "beforeend",
-  new Player(
-    {
-      memoryMax: 100,
-    },
-    musicBox,
-    Track
-  ).element
-);
+/* 
 
-/*
-+ создайте класс плеер:
+- добавить картинки для треков +
+- отрисовать в плеере текущий трек +
+- когда кликаем на трек, текущий должен меняться (после изменения там должен лежать объект) +
+- оживить кнопки на плеере
+- погуглить тег audio -> внедрить его в верстку methods play pause
+- у плеера будут методы play pause +
+- у плеера будут методы prev next +
 
-какие свойства есть:
-- хранилище загруженных песен +
-- объем памяти в МБ (заполнено/макс) +
-
-- добавить песню (не забывать заполнять память) +
-- воспроизвести по названию (если есть в плеере, то метод выбрасывает строку 
-	"проигрываю песню: название песни")
-- выдача сколько памяти заполнено +
-- выдача сколько памяти осталось +
-- удалить песню из плеера по названию +
-
-
-создать класс песни и самостоятельно подумать какие там есть свойства и методы
-сделать взаимодействие объектов песен с плеером
 */
 
-// class Player {
-//   constructor(musicBox, Track) {
-//     this._musicBox = musicBox;
-//     this._Track = Track;
-//   }
+/*
+- длительность и перемотка +время
+- громкость
+- повтор и тд
+- воспроизведение следующего трека сразу
+*/
 
-//   // добавить еще чуток треков (по одному)
-//   addTrack(trackDataObj) {
-//     const newTrack = new this._Track(trackDataObj);
-//     setStateStorage({
-//       ...this._state.storage,
-//       ...newTrack,
-//     });
-//     this._render();
-//   }
-
-//   _getTemplate() {
-//     return `<div class="player">
-// 							<p class="player__data" data-element="data"></p>
-// 							<p class="player__memory" data-element="memory"></p>
-// 							<p class="player__playNow" data-element="playNow"></p>
-// 							<div class="player__storage" data-element="storage"></div>
-//               buttondata-element="btnAdd"
-// 						</div>`;
-//   }
-
-//   _addListeners() {
-//     this._subElements.btnAdd.addEventListener('click', () => {
-//       _addTrack
-//     })
-//   }
-
-//   removeTrack(id) {
-//     // удаляю трек
-//     this._state.storage = this._state.storage.filter();
-//     this._render();
-//   }
-
-//   _render() {
-//     this._subElements.storage.innerHTML = "";
-//     this._subElements.storage.append(...this._generateItems());
-//   }
-// }
-
-// const player = new Player(musicBox, Track);
+/*
+условие на смену плей паузы кнопки, когда листаем треки
+*/
