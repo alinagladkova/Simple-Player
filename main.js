@@ -54,6 +54,8 @@ class Player {
     currentTrackIndex: 0,
     storage: [],
     isPlay: false,
+    currentTrackDuration: 0,
+    currentTrackCurrentTime: 0,
   };
 
   constructor(startData, Track) {
@@ -68,24 +70,37 @@ class Player {
 
     this._setStateStorage(this._generateItemsObject());
     this._setStateCurrentTrack(this._state.storage[0]);
-
     this._getCurrentTrackLink();
 
+    this._subElements.shuffle.classList.add("btn--active");
     this._addListeners();
+    this._updateListeners();
     this._render();
   }
 
   _addListeners() {
     this._subElements.play.addEventListener("click", () => {
       this._setStatePlay();
+      this._play();
       this._render();
-      this._state.isPlay ? this._play() : this._pause();
+    });
+
+    this._subElements.pause.addEventListener("click", () => {
+      this._setStatePlay();
+      this._pause();
+      this._render();
     });
 
     this._subElements.next.addEventListener("click", () => {
       this._setStateCurrentTrackIndex(this._state.currentTrackIndex + 1);
       this._setStateCurrentTrack(this._state.storage[this._state.currentTrackIndex]);
-      this._getCurrentTrackLink();
+      this._getCurrentTrackLink(); //меняется this.audio
+      this._updateListeners();
+      // если трек не проигрывается
+      if (!this._state.isPlay) {
+        this._setStatePlay();
+      }
+      this._setStateStorage(this._generateItemsObject());
       this._render();
       this._play();
     });
@@ -94,19 +109,46 @@ class Player {
       this._setStateCurrentTrackIndex(this._state.currentTrackIndex - 1);
       this._setStateCurrentTrack(this._state.storage[this._state.currentTrackIndex]);
       this._getCurrentTrackLink();
+      this._updateListeners();
+      // если трек не проигрывается
+      if (!this._state.isPlay) {
+        this._setStatePlay();
+      }
+      this._setStateStorage(this._generateItemsObject());
       this._render();
       this._play();
     });
 
-    // this._getCurrentTrackLink().addEventListener("timeupdate", (e) => {
-    //   this._subElements.startTime.textContent = `${e.target.currentTime}`;
-    //   console.log(e.target.currentTime);
-    //   // console.log(e.target.duration);
-    //   let progressWidth = (e.target.currentTime / e.target.duration) * 100;
-    //   this._subElements.progress.style.width = `${progressWidth}%`;
+    this._subElements.repeat.addEventListener("click", () => {
+      this._subElements.repeat.classList.add("btn--active");
+      this._subElements.shuffle.classList.remove("btn--active");
+    });
 
-    //   // console.log(this._getCurrentTrackLink());
-    // });
+    this._subElements.shuffle.addEventListener("click", () => {
+      this._subElements.shuffle.classList.add("btn--active");
+      this._subElements.repeat.classList.remove("btn--active");
+    });
+
+    //перемотка
+    this._subElements.progressBar.addEventListener("click", (e) => {
+      this._audio.currentTime = (e.offsetX / this._subElements.progressBar.clientWidth) * this._audio.duration;
+      if (!this._state.isPlay) {
+        this._setStatePlay();
+        this._play();
+      }
+      this._render();
+    });
+  }
+
+  _updateListeners() {
+    //обновление таймера
+    this._audio.addEventListener("timeupdate", (e) => {
+      console.log(this._audio, "hello");
+
+      this._setStateCurrentTrackCurrentTime(e.target.currentTime);
+      this._setStateCurrentTrackDuration(e.target.duration);
+      this._render();
+    });
   }
 
   _setStateCurrentTrack(obj) {
@@ -114,7 +156,8 @@ class Player {
   }
 
   _setStateStorage(newTracks) {
-    this._state.storage = [...this._state.storage, ...newTracks];
+    // this._state.storage = [...this._state.storage, ...newTracks];
+    this._state.storage = newTracks;
   }
 
   _setStatePlay() {
@@ -125,17 +168,33 @@ class Player {
     this._state.currentTrackIndex = index;
   }
 
+  _setStateCurrentTrackCurrentTime(currentTime) {
+    this._state.currentTrackCurrentTime = currentTime;
+  }
+
+  _setStateCurrentTrackDuration(duration) {
+    this._state.currentTrackDuration = duration;
+  }
+
   _listTrackHandler(key) {
     this._setStateCurrentTrackIndex(key);
     this._setStateCurrentTrack(this._state.storage[key]);
     this._getCurrentTrackLink();
+    this._updateListeners();
+    this._setStateStorage(this._generateItemsObject());
+    if (!this._state.isPlay) {
+      this._setStatePlay();
+    }
     this._render();
     this._play();
   }
 
   _generateItemsObject() {
     return this._startData.map((track, i) => {
-      return new this._Track({ ...track, key: i }, this._listTrackHandler.bind(this));
+      if (this._state.currentTrackIndex === i) {
+        return new this._Track({ ...track, key: i, active: true }, this._listTrackHandler.bind(this));
+      }
+      return new this._Track({ ...track, key: i, active: false }, this._listTrackHandler.bind(this));
     });
   }
 
@@ -148,7 +207,19 @@ class Player {
       // если трек уже установлен, надо ставить его на паузу, вдруг prev next
       this._pause();
     }
+    this._audio = null;
     this._audio = new Audio(`audio/${this._state.currentTrack._audioPath}.mp3`);
+
+    // this._audio.addEventListener("timeupdate", (e) => {
+    //   console.log(this._audio, "hello");
+    //   /*
+    // 	В чем разница
+    // 	this._audio.currentTime и e.target.currentTime?
+    // 	*/
+    //   // this._setStateCurrentTrackCurrentTime(e.target.currentTime);
+    //   // this._setStateCurrentTrackDuration(e.target.duration);
+    //   // this._render();
+    // });
   }
 
   _play() {
@@ -167,7 +238,33 @@ class Player {
     return this._state.currentTrackIndex > 0;
   }
 
+  _countDuration() {
+    const totalMin = Math.floor(this._audio.duration / 60);
+    let totalSec = Math.floor(this._audio.duration % 60);
+    if (totalSec < 10) {
+      totalSec = `0${totalSec}`;
+    }
+    return {
+      totalMin,
+      totalSec,
+    };
+  }
+
+  _countCurrentTime() {
+    const currentMin = Math.floor(this._audio.currentTime / 60);
+    let currentSec = Math.floor(this._audio.currentTime % 60);
+
+    if (currentSec < 10) {
+      currentSec = `0${currentSec}`;
+    }
+    return {
+      currentMin,
+      currentSec,
+    };
+  }
+
   _render() {
+    this._subElements.storage.innerHTML = "";
     this._subElements.storage.append(...this._generateItemsElements());
 
     this._subElements.name.textContent = `${this._state.currentTrack._name}`;
@@ -175,10 +272,19 @@ class Player {
     this._subElements.img.src = `images/${this._state.currentTrack._imgPath}.jpg`;
 
     if (this._state.isPlay) {
-      this._subElements.play.innerHTML = `<i class="fa-solid fa-pause"></i>`;
+      this._subElements.play.classList.add("btn--active");
+      this._subElements.pause.classList.remove("btn--active");
     } else {
-      this._subElements.play.innerHTML = `<i class="fa-solid fa-play"></i>`;
+      this._subElements.play.classList.remove("btn--active");
+      this._subElements.pause.classList.add("btn--active");
     }
+
+    this._subElements.actualProgress.style.width = `${(this._state.currentTrackCurrentTime / this._state.currentTrackDuration) * 100}%`;
+    this._audio.onloadeddata = () => {
+      this._subElements.duration.textContent = `${this._countDuration().totalMin}:${this._countDuration().totalSec}`;
+    };
+
+    this._subElements.currentTime.textContent = `${this._countCurrentTime().currentMin}:${this._countCurrentTime().currentSec}`;
 
     !this._isNext() ? this._subElements.next.setAttribute("disabled", true) : this._subElements.next.removeAttribute("disabled");
     !this._isPrev() ? this._subElements.prev.setAttribute("disabled", true) : this._subElements.prev.removeAttribute("disabled");
@@ -193,18 +299,27 @@ class Player {
 								<span class="player__name" data-element="name"></span>
 								<span class="player__artist" data-element="artist"></span>
 							</div>
-							<div class="player__control">
-								<button class="btn btn--prev" data-element="prev"><i class="fa-solid fa-backward"></i></button>
-								<button class="btn btn--play" data-element="play"></button>
-								<button class="btn btn--next" data-element="next"><i class="fa-solid fa-forward"></i></button>
-							</div>
-							<div class="player__progress">
-								<div class="player__progress-bar" data-element="progress"></div>
-								<div class="player__timer">
-								<span class="player__start-time" data-element="startTime">0:00</span>
-								<span class="player__end-time">03:20</span>
-
+							<div class="player__action">
+								<div class="player__control">
+									<button class="btn btn--prev" data-element="prev"><i class="fa-solid fa-backward"></i></button>
+									<button class="btn btn--pause" data-element="pause"><i class="fa-solid fa-pause"></i></button>
+									<button class="btn btn--play" data-element="play"><i class="fa-solid fa-play"></i></button>
+									<button class="btn btn--next" data-element="next"><i class="fa-solid fa-forward"></i></button>
 								</div>
+								<div class="player__extra" data-element="extra">
+									<button class="btn btn--repeat" data-element="repeat"><i class="fa-solid fa-repeat"></i></button>
+									<button class="btn btn--shuffle" data-element="shuffle"><i class="fa-solid fa-shuffle"></i></button>
+								</div>
+							</div>
+							<div class="progress-area" data-element="progressArea">
+								<div class="progress-area__progress-bar" data-element="progressBar">
+									<div class="progress-area__progress-actual" data-element="actualProgress"></div>
+								</div>
+								<div class="progress-area__timer">
+									<span class="progress-area__current-time" data-element="currentTime"></span>
+									<span class="progress-area__duration" data-element="duration"></span>
+								</div>
+
 							</div>
 							<div class="player__storage" data-element="storage"></div>
       			</div>`;
@@ -228,7 +343,7 @@ class Track {
   _element = null;
   _subElements = {};
 
-  constructor({ id, singer, name, imgPath, audioPath, key }, listTrackHandler) {
+  constructor({ id, singer, name, imgPath, audioPath, key, active }, listTrackHandler) {
     this._id = id;
     this._singer = singer;
     this._name = name;
@@ -236,6 +351,7 @@ class Track {
     this._listTrackHandler = listTrackHandler;
     this._audioPath = audioPath;
     this._key = key;
+    this._active = active;
     this._init();
   }
 
@@ -246,13 +362,13 @@ class Track {
   }
 
   _addListeners() {
-    this._element.addEventListener("click", (e) => {
+    this._element.addEventListener("click", () => {
       this._listTrackHandler(this._key);
     });
   }
 
   _getTemplate() {
-    return `<div class="track" data-id="${this._id}">
+    return `<div class="track ${this._active ? "track--active" : ""}" data-id="${this._id}">
 							<img class="track__img" src="images/${this._imgPath}.jpg" alt="" />
 							<span class="track__singer">${this._singer} -</span>
 							<span class="track__name">${this._name}</span>
@@ -276,25 +392,8 @@ class Track {
 const root = document.querySelector(".root");
 root.insertAdjacentElement("beforeend", new Player(startData, Track).element);
 
-/* 
-
-- добавить картинки для треков +
-- отрисовать в плеере текущий трек +
-- когда кликаем на трек, текущий должен меняться (после изменения там должен лежать объект) +
-- оживить кнопки на плеере
-- погуглить тег audio -> внедрить его в верстку methods play pause
-- у плеера будут методы play pause +
-- у плеера будут методы prev next +
-
-*/
-
 /*
-- длительность и перемотка +время
 - громкость
-- повтор и тд
-- воспроизведение следующего трека сразу
-*/
+- повтор и шаффл
 
-/*
-условие на смену плей паузы кнопки, когда листаем треки
 */

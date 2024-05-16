@@ -49,24 +49,77 @@ body {
   font-weight: 100;
   margin-bottom: 10px;
 }
-
-.player__control {
-  margin-bottom: 15px;
-}
-.player__progress {
+.player__action {
+  position: relative;
   width: 70%;
 }
-.player__progress-bar {
+
+.player__control {
+  position: relative;
+  left: 33%;
+}
+
+.player__extra {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  justify-content: end;
+}
+
+.player__extra:hover {
+  color: aqua;
+}
+.progress-area {
+  width: 70%;
+}
+.progress-area__progress-bar {
+  position: relative;
+  cursor: pointer;
   display: inline-block;
+  margin: 15px 0;
   width: 100%;
-  height: 3px;
+
+  height: 6px;
+  background: #25303b;
+  border-radius: 50px;
+}
+
+/* .progress-area__progress-field {
+  width: 100%;
+  height: 6px;
+  background: #25303b;
+  border-radius: 50px;
+} */
+
+.progress-area__progress-actual {
+  position: absolute;
+  top: 0;
+  height: 6px;
+  border-radius: 50px;
   background: linear-gradient(0.25turn, Pink, Teal);
 }
 
-.player__timer {
+.progress-area__progress-actual::before {
+  content: "";
+  position: absolute;
+  height: 15px;
+  width: 15px;
+  background-color: pink;
+  border-radius: 50px;
+  right: -5px;
+  top: -5px;
+  transition: opacity 0.2s ease;
+  opacity: 0;
+}
+
+.progress-area:hover .progress-area__progress-actual::before {
+  opacity: 1;
+}
+
+.progress-area__timer {
   display: flex;
   justify-content: space-between;
-  margin-top: 5px;
 }
 
 .player__storage {
@@ -86,12 +139,21 @@ body {
   color: aquamarine;
 }
 
+.btn--active {
+  display: none;
+}
+
 .track {
   cursor: pointer;
   display: flex;
   align-items: center;
   padding: 5px;
   border-bottom: 1px solid #495169;
+}
+
+.track--active {
+  background-color: #778ba1;
+  color: #1a2129;
 }
 
 .player__storage-title {
