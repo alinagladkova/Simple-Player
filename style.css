@@ -54,6 +54,63 @@ body {
   width: 70%;
 }
 
+.player__volume {
+  position: absolute;
+}
+
+.volume__progress-area {
+  position: absolute;
+  cursor: pointer;
+  top: -130px;
+  width: 30px;
+  height: 120px;
+  border-radius: 5px;
+  box-shadow: 3px 3px 5px #1a2129;
+  background-color: #a6beda;
+  transition: opacity 0.2s ease;
+  opacity: 0;
+}
+
+.volume__progress-area--active {
+  opacity: 1;
+}
+
+.volume__progress-bar {
+  position: relative;
+  cursor: pointer;
+  display: inline-block;
+  margin: 3px 12px;
+  height: 90%;
+  width: 6px;
+  transform: rotate(180deg);
+  border-radius: 50px;
+  background-color: #879db6;
+}
+
+.volume__progress-actual {
+  position: absolute;
+  width: 6px;
+  border-radius: 50px;
+  background: #25303b;
+}
+
+.volume__progress-actual::before {
+  content: "";
+  position: absolute;
+  height: 15px;
+  width: 15px;
+  background-color: #25303b;
+  border-radius: 50px;
+  left: -70%;
+  bottom: 0;
+  transition: opacity 0.2s ease;
+  opacity: 0;
+}
+
+.volume__progress-area:hover .volume__progress-actual::before {
+  opacity: 1;
+}
+
 .player__control {
   position: relative;
   left: 33%;
@@ -63,8 +120,6 @@ body {
   position: absolute;
   top: 0;
   right: 0;
-  display: flex;
-  justify-content: end;
 }
 
 .player__extra:hover {
@@ -79,18 +134,10 @@ body {
   display: inline-block;
   margin: 15px 0;
   width: 100%;
-
   height: 6px;
   background: #25303b;
   border-radius: 50px;
 }
-
-/* .progress-area__progress-field {
-  width: 100%;
-  height: 6px;
-  background: #25303b;
-  border-radius: 50px;
-} */
 
 .progress-area__progress-actual {
   position: absolute;
@@ -107,7 +154,6 @@ body {
   width: 15px;
   background-color: pink;
   border-radius: 50px;
-  right: -5px;
   top: -5px;
   transition: opacity 0.2s ease;
   opacity: 0;

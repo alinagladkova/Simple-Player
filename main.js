@@ -72,15 +72,20 @@ class Player {
     this._setStateCurrentTrack(this._state.storage[0]);
     this._getCurrentTrackLink();
 
+    this._handleKeyDocument = this._handleKeyDocument.bind(this);
+    this._handleClickDocument = this._handleClickDocument.bind(this);
     this._subElements.shuffle.classList.add("btn--active");
+    this._subElements.repeatOne.classList.add("btn--active");
     this._addListeners();
     this._updateListeners();
+    this._endedListeners();
     this._render();
   }
 
   _addListeners() {
     this._subElements.play.addEventListener("click", () => {
       this._setStatePlay();
+
       this._play();
       this._render();
     });
@@ -92,41 +97,46 @@ class Player {
     });
 
     this._subElements.next.addEventListener("click", () => {
-      this._setStateCurrentTrackIndex(this._state.currentTrackIndex + 1);
-      this._setStateCurrentTrack(this._state.storage[this._state.currentTrackIndex]);
-      this._getCurrentTrackLink(); //меняется this.audio
-      this._updateListeners();
-      // если трек не проигрывается
-      if (!this._state.isPlay) {
-        this._setStatePlay();
-      }
-      this._setStateStorage(this._generateItemsObject());
-      this._render();
-      this._play();
+      // this._endedListeners();
+
+      this._playNext();
     });
 
     this._subElements.prev.addEventListener("click", () => {
-      this._setStateCurrentTrackIndex(this._state.currentTrackIndex - 1);
-      this._setStateCurrentTrack(this._state.storage[this._state.currentTrackIndex]);
-      this._getCurrentTrackLink();
-      this._updateListeners();
-      // если трек не проигрывается
-      if (!this._state.isPlay) {
-        this._setStatePlay();
-      }
-      this._setStateStorage(this._generateItemsObject());
-      this._render();
-      this._play();
+      // this._endedListeners();
+
+      this._playPrev();
     });
 
     this._subElements.repeat.addEventListener("click", () => {
       this._subElements.repeat.classList.add("btn--active");
+      this._subElements.shuffle.classList.add("btn--active");
+      this._subElements.repeatOne.classList.remove("btn--active");
+      console.log(1);
+    });
+
+    this._subElements.repeatOne.addEventListener("click", () => {
+      this._subElements.repeatOne.classList.add("btn--active");
       this._subElements.shuffle.classList.remove("btn--active");
+      this._subElements.repeat.classList.add("btn--active");
+      console.log(2);
     });
 
     this._subElements.shuffle.addEventListener("click", () => {
       this._subElements.shuffle.classList.add("btn--active");
       this._subElements.repeat.classList.remove("btn--active");
+      this._subElements.repeatOne.classList.add("btn--active");
+      console.log(3);
+    });
+
+    this._subElements.btnVolume.addEventListener("click", () => {
+      this._openVolume();
+    });
+
+    //звук
+    this._subElements.volumeBar.addEventListener("click", (e) => {
+      this._audio.volume = e.offsetY / 100;
+      this._render();
     });
 
     //перемотка
@@ -143,12 +153,71 @@ class Player {
   _updateListeners() {
     //обновление таймера
     this._audio.addEventListener("timeupdate", (e) => {
-      console.log(this._audio, "hello");
-
       this._setStateCurrentTrackCurrentTime(e.target.currentTime);
       this._setStateCurrentTrackDuration(e.target.duration);
+      // this._endedListeners();
       this._render();
     });
+  }
+
+  _endedListeners() {
+    //repeat n shuffle
+    this._audio.addEventListener("ended", () => {
+      if (this._subElements.repeat.classList.contains("btn--active") && this._subElements.shuffle.classList.contains("btn--active")) {
+        this._playNext();
+        //как только заканчивается плейлист, то начинам заново
+        //нужен цикл по массиву треков, который будет воспроизводиться (storage)
+        //условие - если в массиве последний трек и кнопка далее, но след - первый трек
+        if (this._state.currentTrackIndex > this._state.storage.length) {
+          return console.log("repeat");
+        }
+      } else if (this._subElements.repeatOne.classList.contains("btn--active") && this._subElements.repeat.classList.contains("btn--active")) {
+        this._setStatePlay();
+        if (!this._state.isPlay) {
+          this._setStatePlay();
+        }
+        this._play();
+        this._render();
+        return console.log("repeatOne");
+      } else if (this._subElements.shuffle.classList.contains("btn--active") && this._subElements.repeatOne.classList.contains("btn--active")) {
+        this._setStateCurrentTrackIndex(Math.floor(Math.random() * this._state.storage.length + 1));
+        this._setStateCurrentTrack(this._state.storage[this._state.currentTrackIndex]);
+        this._getCurrentTrackLink();
+        this._setStatePlay();
+        if (!this._state.isPlay) {
+          this._setStatePlay();
+        }
+        this._setStateStorage(this._generateItemsObject());
+        this._updateListeners();
+        this._play();
+        this._render();
+        return console.log("shuffle");
+      }
+    });
+  }
+
+  _handleKeyDocument(e) {
+    if (e.key === "Escape") {
+      this._closeVolume();
+    }
+  }
+
+  _handleClickDocument(e) {
+    if (!e.target.closest(".player__volume")) {
+      this._closeVolume();
+    }
+  }
+
+  _openVolume() {
+    document.addEventListener("keydown", this._handleKeyDocument);
+    document.addEventListener("click", this._handleClickDocument);
+    this._subElements.volume.classList.add("volume__progress-area--active");
+  }
+
+  _closeVolume() {
+    document.removeEventListener("keydown", this._handleKeyDocument);
+    document.removeEventListener("click", this._handleClickDocument);
+    this._subElements.volume.classList.remove("volume__progress-area--active");
   }
 
   _setStateCurrentTrack(obj) {
@@ -156,7 +225,6 @@ class Player {
   }
 
   _setStateStorage(newTracks) {
-    // this._state.storage = [...this._state.storage, ...newTracks];
     this._state.storage = newTracks;
   }
 
@@ -165,7 +233,9 @@ class Player {
   }
 
   _setStateCurrentTrackIndex(index) {
-    this._state.currentTrackIndex = index;
+    // this._state.currentTrackIndex = index;
+    index > this._state.storage.length ? (this._state.currentTrackIndex = 0) : (this._state.currentTrackIndex = index);
+    console.log(this._state.currentTrackIndex);
   }
 
   _setStateCurrentTrackCurrentTime(currentTime) {
@@ -179,8 +249,14 @@ class Player {
   _listTrackHandler(key) {
     this._setStateCurrentTrackIndex(key);
     this._setStateCurrentTrack(this._state.storage[key]);
+
+    console.log(key);
+    console.log(this._state.storage.length);
+
+    key > this._state.storage.length ? this._setStateCurrentTrackIndex(0) : this._setStateCurrentTrackIndex(key);
     this._getCurrentTrackLink();
     this._updateListeners();
+
     this._setStateStorage(this._generateItemsObject());
     if (!this._state.isPlay) {
       this._setStatePlay();
@@ -208,18 +284,14 @@ class Player {
       this._pause();
     }
     this._audio = null;
+    console.log(this._state.currentTrack);
     this._audio = new Audio(`audio/${this._state.currentTrack._audioPath}.mp3`);
-
-    // this._audio.addEventListener("timeupdate", (e) => {
-    //   console.log(this._audio, "hello");
-    //   /*
-    // 	В чем разница
-    // 	this._audio.currentTime и e.target.currentTime?
-    // 	*/
-    //   // this._setStateCurrentTrackCurrentTime(e.target.currentTime);
-    //   // this._setStateCurrentTrackDuration(e.target.duration);
-    //   // this._render();
-    // });
+    //сделать чтото!
+    if (this._audio === undefined) {
+      this._audio = new Audio(`audio/${this._state.storage[this._state.currentTrackIndex]._audioPath}.mp3`);
+    }
+    // console.log(this._state.storage[this._state.currentTrackIndex]._audioPath);
+    // console.log(this._audio);
   }
 
   _play() {
@@ -231,11 +303,46 @@ class Player {
   }
 
   _isNext() {
-    return this._state.storage.length > this._state.currentTrackIndex + 1;
+    this._state.storage.length > this._state.currentTrackIndex + 1;
   }
 
   _isPrev() {
     return this._state.currentTrackIndex > 0;
+  }
+
+  _playNext() {
+    this._setStateCurrentTrackIndex(this._state.currentTrackIndex + 1);
+    //если индекс больше, чем длина, то индекс = первому треку
+
+    this._setStateCurrentTrack(this._state.storage[this._state.currentTrackIndex]);
+    this._getCurrentTrackLink(); //меняется this.audio
+    this._updateListeners();
+    console.log(this._state.currentTrackIndex);
+    // this._endedListeners();
+
+    // если трек не проигрывается
+    if (!this._state.isPlay) {
+      this._setStatePlay();
+    }
+    this._setStateStorage(this._generateItemsObject());
+    this._render();
+    this._play();
+  }
+
+  _playPrev() {
+    this._setStateCurrentTrackIndex(this._state.currentTrackIndex - 1);
+    this._setStateCurrentTrack(this._state.storage[this._state.currentTrackIndex]);
+    this._getCurrentTrackLink();
+    this._updateListeners();
+    // this._endedListeners();
+
+    // если трек не проигрывается
+    if (!this._state.isPlay) {
+      this._setStatePlay();
+    }
+    this._setStateStorage(this._generateItemsObject());
+    this._render();
+    this._play();
   }
 
   _countDuration() {
@@ -279,6 +386,8 @@ class Player {
       this._subElements.pause.classList.add("btn--active");
     }
 
+    this._subElements.volumeProgress.style.height = `${this._audio.volume * 100}%`;
+
     this._subElements.actualProgress.style.width = `${(this._state.currentTrackCurrentTime / this._state.currentTrackDuration) * 100}%`;
     this._audio.onloadeddata = () => {
       this._subElements.duration.textContent = `${this._countDuration().totalMin}:${this._countDuration().totalSec}`;
@@ -286,8 +395,8 @@ class Player {
 
     this._subElements.currentTime.textContent = `${this._countCurrentTime().currentMin}:${this._countCurrentTime().currentSec}`;
 
-    !this._isNext() ? this._subElements.next.setAttribute("disabled", true) : this._subElements.next.removeAttribute("disabled");
-    !this._isPrev() ? this._subElements.prev.setAttribute("disabled", true) : this._subElements.prev.removeAttribute("disabled");
+    // !this._isNext() ? this._subElements.next.setAttribute("disabled", true) : this._subElements.next.removeAttribute("disabled");
+    // !this._isPrev() ? this._subElements.prev.setAttribute("disabled", true) : this._subElements.prev.removeAttribute("disabled");
   }
 
   _getTemplate() {
@@ -300,6 +409,14 @@ class Player {
 								<span class="player__artist" data-element="artist"></span>
 							</div>
 							<div class="player__action">
+								<div class="player__volume">
+									<button class="btn btn--volume" data-element="btnVolume"><i class="fa-solid fa-volume-high"></i></button>
+									<div class="volume__progress-area" data-element="volume">
+										<div class="volume__progress-bar" data-element="volumeBar">
+											<div class="volume__progress-actual" data-element="volumeProgress"></div>
+										</div>
+									</div>
+								</div>
 								<div class="player__control">
 									<button class="btn btn--prev" data-element="prev"><i class="fa-solid fa-backward"></i></button>
 									<button class="btn btn--pause" data-element="pause"><i class="fa-solid fa-pause"></i></button>
@@ -309,6 +426,7 @@ class Player {
 								<div class="player__extra" data-element="extra">
 									<button class="btn btn--repeat" data-element="repeat"><i class="fa-solid fa-repeat"></i></button>
 									<button class="btn btn--shuffle" data-element="shuffle"><i class="fa-solid fa-shuffle"></i></button>
+									<button class="btn btn--repeatOne" data-element="repeatOne"><i class="fa-solid fa-1"></i></i></button>
 								</div>
 							</div>
 							<div class="progress-area" data-element="progressArea">
@@ -393,7 +511,13 @@ const root = document.querySelector(".root");
 root.insertAdjacentElement("beforeend", new Player(startData, Track).element);
 
 /*
-- громкость
-- повтор и шаффл
+volume
+сделать druggable
+сделать mute при нажатии на иконку
+закинуть начальное значение 50% audio volume
+
+repeat
+понять как сделать loop воспроизведения треков
+понять что не так с условием current track index 
 
 */
