@@ -94,15 +94,32 @@ body {
   background: #25303b;
 }
 
-.volume__progress-actual::before {
-  content: "";
+/* .volume__progress-btn {
   position: absolute;
   height: 15px;
   width: 15px;
   background-color: #25303b;
   border-radius: 50px;
   left: -70%;
-  bottom: 0;
+  /* bottom: 0; */
+/* transition: opacity 0.2s ease;
+  opacity: 0;
+} 
+
+.volume__progress-area:hover .volume__progress-btn {
+  opacity: 1;
+} */
+
+.volume__progress-actual::before {
+  content: "";
+  display: flex;
+  position: relative;
+  height: 15px;
+  width: 15px;
+  background-color: #25303b;
+  border-radius: 50px;
+  left: -70%;
+  bottom: -95%;
   transition: opacity 0.2s ease;
   opacity: 0;
 }
@@ -155,6 +172,7 @@ body {
   background-color: pink;
   border-radius: 50px;
   top: -5px;
+  right: 0;
   transition: opacity 0.2s ease;
   opacity: 0;
 }
@@ -200,9 +218,6 @@ body {
 .track--active {
   background-color: #778ba1;
   color: #1a2129;
-}
-
-.player__storage-title {
 }
 
 .track__img {
