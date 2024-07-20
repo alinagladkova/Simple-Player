@@ -94,22 +94,6 @@ body {
   background: #25303b;
 }
 
-/* .volume__progress-btn {
-  position: absolute;
-  height: 15px;
-  width: 15px;
-  background-color: #25303b;
-  border-radius: 50px;
-  left: -70%;
-  /* bottom: 0; */
-/* transition: opacity 0.2s ease;
-  opacity: 0;
-} 
-
-.volume__progress-area:hover .volume__progress-btn {
-  opacity: 1;
-} */
-
 .volume__progress-actual::before {
   content: "";
   display: flex;
@@ -142,9 +126,7 @@ body {
 .player__extra:hover {
   color: aqua;
 }
-.progress-area {
-  width: 70%;
-}
+
 .progress-area__progress-bar {
   position: relative;
   cursor: pointer;
